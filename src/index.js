@@ -6,7 +6,10 @@ const {syncVideoFilesWithDatabase} = require("./controllers/video.controller");
 const app = express();
 const PORT = process.env.PORT || 8000;
 
+
+// Enable CORS
 app.use(cors());
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/public', express.static('public'));

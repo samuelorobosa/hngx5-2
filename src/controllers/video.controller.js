@@ -7,18 +7,18 @@ const {
     handleFetchVideos: handleFetchVideosModel,
     handleDeleteVideo: handleDeleteVideoModel,
 } = require("../models/video/video.model");
-const path = require("path");
 
 exports.handleVideoUpload = async function (req, res) {
     const file = req.file;
-    const {filename} = file;
-    const __filename = parse(filename).name;
-    const __ext = parse(filename).ext;
     if (!file) {
         res.status(400).json({
             message: "Please upload a file",
         });
     }
+
+    const {filename} = file;
+    const __filename = parse(filename).name;
+    const __ext = parse(filename).ext;
 
     const response = await handleVideoUploadModel({__filename, __ext});
     if(!response){
