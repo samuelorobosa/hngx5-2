@@ -20,3 +20,7 @@ exports.handleFetchVideo = async function (data){
 exports.handleFetchVideos = async function (){
     return videos.find();
 }
+
+exports.handleDeleteVideo = async function (data){
+    return videos.findByIdAndDelete(data.id);
+}

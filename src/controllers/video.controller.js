@@ -4,7 +4,8 @@ const {
     handleVideoUpload:handleVideoUploadModel,
     handleVideoEdit: handleVideoEditModel,
     handleFetchVideo: handleFetchVideoModel,
-    handleFetchVideos: handleFetchVideosModel
+    handleFetchVideos: handleFetchVideosModel,
+    handleDeleteVideo: handleDeleteVideoModel,
 } = require("../models/video/video.model");
 const path = require("path");
 
@@ -150,3 +151,26 @@ exports.syncVideoFilesWithDatabase = async function (){
         }
     });
 };
+
+exports.handleDeleteVideo = async function (req, res) {
+    const {id} = req.params;
+    if(!id){
+        res.status(400).json({
+            message: "Please provide an id",
+        });
+    }
+
+    const response = await handleDeleteVideoModel({id});
+    if (!response) {
+        res.status(400).json({
+            message: "Video not found",
+        });
+    }
+
+    //Delete video in file system
+    fs.rmdirSync(`public/${id}`, { recursive: true });
+
+    res.status(200).json({
+        message: "Video deleted successfully",
+    });
+}

@@ -3,7 +3,8 @@ const {
     handleVideoUpload: handleVideoUploadController,
     handleVideoEdit: handleVideoEditController,
     handleFetchVideo: handleFetchVideoController,
-    handleFetchVideos: handleFetchVideosController
+    handleFetchVideos: handleFetchVideosController,
+    handleDeleteVideo: handleDeleteVideoController
 } = require("../controllers/video.controller");
 const uploadFile = require("../middlewares/fileUpload");
 
@@ -15,3 +16,4 @@ videoRouter.post('/upload', uploadFile, handleVideoUploadController);
 videoRouter.post('/edit/:id', handleVideoEditController);
 videoRouter.get('/:id', handleFetchVideoController);
 videoRouter.get('/', handleFetchVideosController);
+videoRouter.get('/delete/:id', handleDeleteVideoController);
