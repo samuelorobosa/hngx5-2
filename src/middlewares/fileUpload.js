@@ -11,7 +11,7 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = function (req, file, callback) {
-    const allowedFileTypes = ['video/mp4', 'video/mov', 'video/mkv', 'video/webm'];
+    const allowedFileTypes = ['video/mp4', 'video/mov', 'video/mkv', 'video/webm' ];
     if (!allowedFileTypes.includes(file.mimetype)) {
         return callback(new Error(`Only videos of type ${allowedFileTypes.join(' or ')} are allowed`));
     }
