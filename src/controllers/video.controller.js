@@ -7,8 +7,6 @@ const {
     handleFetchVideos: handleFetchVideosModel,
     handleDeleteVideo: handleDeleteVideoModel,
 } = require("../models/video/video.model");
-const {setupRabbitMQ} = require("../services/transcription");
-const {queueKeys} = require("../utils/queueKeys");
 const { v4: uuidv4 } = require('uuid');
 
 
@@ -33,6 +31,18 @@ exports.handleVideoUpload = async function (req, res)  {
     const directoryPath = join('public', sessionId, 'chunks');
     const filePath = join(directoryPath, `chunk${chunkNumber}`);
 
+    if (!chunkNumber){
+        res.status(400).json({
+            message: 'Chunk Number not found in request header'
+        })
+    }
+
+    if (!sessionId){
+        res.status(400).json({
+            message: 'Session ID not found in request header'
+        })
+    }
+
     // Create the directory if it doesn't exist
     if (!fs.existsSync(directoryPath)) {
         fs.mkdirSync(directoryPath, { recursive: true });
@@ -50,9 +60,23 @@ exports.handleVideoUpload = async function (req, res)  {
 }
 
 exports.handleAssembleVideo = async function (req, res)  {
+    const extension = req.headers['file-type'].split('/')[1];
     const {sessionId} = req.body;
+
+    if (!extension){
+        res.status(400).json({
+            message: 'File Type not found in request header'
+        })
+    }
+
+    if (!sessionId){
+        res.status(400).json({
+            message: 'Session ID not found in request body'
+        })
+    }
+    const __filename = 'Untitled-Video'
     const sessionDir = join('public', sessionId, 'chunks');
-    const outputFilePath = join('public', `${sessionId}`, `Untitled-Video.mp4`);
+    const outputFilePath = join('public', `${sessionId}`, `${__filename}.${extension}`);
     const writeStream = fs.createWriteStream(outputFilePath);
 
     for (const file of fs.readdirSync(sessionDir)) {
@@ -65,7 +89,27 @@ exports.handleAssembleVideo = async function (req, res)  {
     writeStream.on('finish', async () => {
         fs.rmdirSync(sessionDir, { recursive: true });
     })
-    res.status(200).json({ message: "Video assembled successfully" });
+
+    //Create the entry on the database
+    const response = await handleVideoUploadModel({__filename, extension, sessionId});
+    if(!response){
+        res.status(500).json({
+            message: "Something went wrong, video not uploaded",
+        });
+    }
+
+    const relative_file_url = `/public/${sessionId}/${__filename}.${extension}`;
+    const file_url = `${req.protocol}://${req.headers.host}${relative_file_url}`;
+
+    // Send final response
+    res.status(200).json({
+        message: "Video assembled successfully",
+        data: {
+            id: response._id.toString(),
+            name: response.name,
+            file_url
+        }
+    });
 }
 
 exports.handleStreamVideo = async function (req, res)  {
@@ -75,7 +119,14 @@ exports.handleStreamVideo = async function (req, res)  {
             message: "Please provide an id",
         });
     }
-    const videoPath = join('public', id, 'Untitled-Video.mp4');
+
+    const response = await handleFetchVideoModel({id});
+    if (!response) {
+        res.status(400).json({
+            message: "Video not found",
+        });
+    }
+    const videoPath = join('public', response.sessionId, `${response.name}.${response.extension}`);
     const stat = fs.statSync(videoPath);
 
     res.writeHead(200, {
@@ -86,51 +137,6 @@ exports.handleStreamVideo = async function (req, res)  {
     const videoStream = fs.createReadStream(videoPath);
     videoStream.pipe(res);
 }
-// exports.handleVideoUpload = async function (req, res)  {
-//     const file = req.file;
-//     if (!file) {
-//         res.status(400).json({
-//             message: "Please upload a file",
-//         });
-//     }
-//
-//     const {filename} = file;
-//     const __filename = parse(filename).name;
-//     const __ext = parse(filename).ext;
-//
-//     const response = await handleVideoUploadModel({__filename, __ext});
-//     if(!response){
-//         res.status(500).json({
-//             message: "Something went wrong, video not uploaded",
-//         });
-//     }
-//
-//     // Create a folder in the public direction named with the id of the video and move the old one
-//     fs.mkdir(`public/${response._id.toString()}`, (err) => {
-//         if (err){
-//             throw err;
-//         }
-//         fs.rename(`public/${filename}`, `public/${response._id.toString()}/${filename}`, (err) => {
-//             if (err){
-//                 throw err;
-//             }
-//             const relative_file_url = `/public/${response._id.toString()}/${filename}`;
-//             const file_url = `${req.protocol}://${req.headers.host}${relative_file_url}`;
-//
-//             // Send data to queue for transcription
-//             channel.sendToQueue(queueKeys.TRANSCRIPTION_QUEUE, Buffer.from(JSON.stringify({ relative_file_url })));
-//
-//             res.status(200).json({
-//                 message: "File uploaded successfully",
-//                 data: {
-//                     id: response._id.toString(),
-//                     name: response.name,
-//                     file_url
-//                 }
-//             })
-//         })
-//     });
-// }
 
 exports.handleVideoEdit = async function (req, res) {
     const {id} = req.params;
@@ -154,7 +160,7 @@ exports.handleVideoEdit = async function (req, res) {
     }
 
     // Edit video in file system
-    fs.rename(`public/${id}/${response.name}${response.extension}`, `public/${id}/${name}${response.extension}`, (err) => {
+    fs.rename(`public/${response.sessionId}/${response.name}.${response.extension}`, `public/${response.sessionId}/${name}${response.extension}`, (err) => {
         if (err){
             throw err;
         }
@@ -163,36 +169,10 @@ exports.handleVideoEdit = async function (req, res) {
             data: {
                 id: response._id.toString(),
                 name,
-                file_url: `${req.protocol}://${req.headers.host}/public/${id}/${name}${response.extension}`
+                file_url: `${req.protocol}://${req.headers.host}/public/${response.sessionId}/${name}.${response.extension}`
             }
         })
     });
-}
-
-exports.handleFetchVideo = async function (req, res) {
-    const {id} = req.params;
-    if(!id){
-        res.status(400).json({
-            message: "Please provide an id",
-        });
-    }
-
-    const response = await handleFetchVideoModel({id});
-    if (!response) {
-        res.status(400).json({
-            message: "Video not found",
-        });
-    }
-
-    const file_url = `${req.protocol}://${req.headers.host}/public/${response._id.toString()}/${response.name}${response.extension}`
-    res.status(200).json({
-        message: "Video fetched successfully",
-        data: {
-            id: response._id.toString(),
-            name: response.name,
-            file_url
-        }
-    })
 }
 
 exports.handleFetchVideos = async function (req, res) {
@@ -204,7 +184,7 @@ exports.handleFetchVideos = async function (req, res) {
     }
 
     const videos = response.map((video) => {
-        const file_url = `${req.protocol}://${req.headers.host}/public/${video._id.toString()}/${video.name}${video.extension}`
+        const file_url = `${req.protocol}://${req.headers.host}/public/${video.sessionId}/${video.name}.${video.extension}`
         return {
             id: video._id.toString(),
             name: video.name,
@@ -216,24 +196,6 @@ exports.handleFetchVideos = async function (req, res) {
         data: videos
     })
 }
-
-exports.syncVideoFilesWithDatabase = async function (){
-    const response = await handleFetchVideosModel();
-    if (!response) {
-        return;
-    }
-    const directories = fs.readdirSync('public', { withFileTypes: true })
-        .filter(dirent => dirent.isDirectory())
-        .map(dirent => dirent.name);
-
-    //Delete directories that are not in the database
-    directories.forEach((directory) => {
-        const found = response.find((video) => video._id.toString() === directory);
-        if(!found){
-            fs.rmdirSync(`public/${directory}`, { recursive: true });
-        }
-    });
-};
 
 exports.handleDeleteVideo = async function (req, res) {
     const {id} = req.params;
@@ -257,3 +219,32 @@ exports.handleDeleteVideo = async function (req, res) {
         message: "Video deleted successfully",
     });
 }
+
+exports.handleTranscribeVideoController = async function (req, res) {
+    const {id} = req.params;
+    if(!id){
+        res.status(400).json({
+            message: "Please provide an id",
+        });
+    }
+    const response = await handleFetchVideoModel({id});
+
+}
+
+exports.syncVideoFilesWithDatabase = async function (){
+    const response = await handleFetchVideosModel();
+    if (!response) {
+        return;
+    }
+    const directories = fs.readdirSync('public', { withFileTypes: true })
+        .filter(dirent => dirent.isDirectory())
+        .map(dirent => dirent.name);
+
+    //Delete directories that are not in the database
+    directories.forEach((directory) => {
+        const found = response.find((video) => video._id.toString() === directory);
+        if(!found){
+            fs.rmdirSync(`public/${directory}`, { recursive: true });
+        }
+    });
+};

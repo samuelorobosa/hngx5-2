@@ -3,7 +3,8 @@ const videos = require('./video.mongo');
 exports.handleVideoUpload = async function (data){
     return await videos.create({
         name: data.__filename,
-        extension: data.__ext
+        extension: data.extension,
+        sessionId: data.sessionId
     })
 }
 

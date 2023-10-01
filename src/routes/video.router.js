@@ -5,9 +5,9 @@ const {
     handleAssembleVideo: handleAssembleVideoController,
     handleStreamVideo: handleStreamVideoController,
     handleVideoEdit: handleVideoEditController,
-    handleFetchVideo: handleFetchVideoController,
     handleFetchVideos: handleFetchVideosController,
-    handleDeleteVideo: handleDeleteVideoController
+    handleDeleteVideo: handleDeleteVideoController,
+    handleTranscribeVideo: handleTranscribeVideoController,
 } = require("../controllers/video.controller");
 const uploadFile = require("../middlewares/fileUpload");
 
@@ -21,8 +21,7 @@ videoRouter.get('/start-chunk', handleStartChunkController);
 videoRouter.post('/upload-chunk', handleVideoUploadController);
 videoRouter.post('/assemble-chunks', handleAssembleVideoController);
 videoRouter.get('/stream-video/:id', handleStreamVideoController);
-
-// videoRouter.post('/edit/:id', handleVideoEditController);
-// videoRouter.get('/:id', handleFetchVideoController);
-// videoRouter.get('/', handleFetchVideosController);
-// videoRouter.get('/delete/:id', handleDeleteVideoController);
+videoRouter.post('/edit/:id', handleVideoEditController);
+videoRouter.get('/', handleFetchVideosController);
+videoRouter.get('/delete/:id', handleDeleteVideoController);
+videoRouter.get('/transcribe/:id', handleTranscribeVideoController);
