@@ -35,8 +35,6 @@ exports.handleVideoUpload = async function (req, res)  {
     const chunkNumber = req.headers['chunk-number'];
     const sessionId = req.headers['session-id'];
     const directoryPath = join('public', sessionId, 'chunks');
-    const filePath = join(directoryPath, `chunk${chunkNumber}`);
-
     if (!chunkNumber){
         res.status(400).json({
             message: 'Chunk Number not found in request header'
@@ -49,6 +47,7 @@ exports.handleVideoUpload = async function (req, res)  {
         })
     }
 
+    const filePath = join(directoryPath, `chunk${chunkNumber}`);
     // Create the directory if it doesn't exist
     if (!fs.existsSync(directoryPath)) {
         fs.mkdirSync(directoryPath, { recursive: true });
