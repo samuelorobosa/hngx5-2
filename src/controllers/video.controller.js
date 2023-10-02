@@ -246,10 +246,10 @@ exports.handleTranscribeVideo = async function (req, res) {
                 stream: fs.createReadStream(filePath),
                 mimetype: mime.getType(filePath),
             })
-            console.log(response.results.channels[0].alternatives[0].transcript);
+            const result = response.results.channels[0].alternatives[0].transcript;
             res.status(200).json({
                 message: 'Transcription successful',
-                data: response
+                data: result
             });
         } catch (e) {
             console.error("Error during transcription", e);
