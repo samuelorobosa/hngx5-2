@@ -6,6 +6,7 @@ const {
     handleStreamVideo: handleStreamVideoController,
     handleVideoEdit: handleVideoEditController,
     handleFetchVideos: handleFetchVideosController,
+    handleFetchVideo: handleFetchVideoController,
     handleDeleteVideo: handleDeleteVideoController,
     handleTranscribeVideo: handleTranscribeVideoController,
 } = require("../controllers/video.controller");
@@ -21,5 +22,6 @@ videoRouter.post('/assemble-chunks', handleAssembleVideoController);
 videoRouter.get('/stream-video/:id', handleStreamVideoController);
 videoRouter.post('/edit/:id', handleVideoEditController);
 videoRouter.get('/', handleFetchVideosController);
+videoRouter.get('/fetch/:id', handleFetchVideoController);
 videoRouter.get('/delete/:id', handleDeleteVideoController);
 videoRouter.get('/transcribe/:id', handleTranscribeVideoController);

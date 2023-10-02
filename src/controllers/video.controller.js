@@ -248,6 +248,31 @@ exports.handleFetchVideos = async function (req, res) {
 
 }
 
+exports.handleFetchVideo = async function (req, res) {
+    try {
+        const {id} = req.params;
+        if(!id){
+            res.status(400).json({
+                message: "Please provide an id",
+            });
+        }
+        const response = await handleFetchVideoModel({id});
+        res.status(200).json({
+            message: "Video fetched successfully",
+            data: {
+                id: response._id.toString(),
+                name: response.name,
+                file_url: `${req.protocol}://${req.headers.host}/public/${response.sessionId}/${response.name}.${response.extension}`
+            }
+        })
+    } catch (e){
+        res.status(500).json({
+            message: "Internal Server Error",
+        })
+    }
+
+}
+
 exports.handleDeleteVideo = async function (req, res) {
     try {
         const {id} = req.params;
