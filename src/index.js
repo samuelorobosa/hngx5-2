@@ -21,7 +21,7 @@ app.use('/api/video', videoRouter);
 
 async function startServer(){
   await mongoConnect();
-  await syncVideoFilesWithDatabase();
+  // await syncVideoFilesWithDatabase();
   app.listen(PORT, ()=>{
     console.log(`App started on ${PORT}`);
   });
