@@ -1,5 +1,9 @@
 const fs = require("fs");
+const https = require('https')
+const { execSync: exec } = require('child_process')
+const { Deepgram } = require('@deepgram/sdk');
 const {parse, join} = require("path");
+const mime = require('mime');
 const {
     handleVideoUpload:handleVideoUploadModel,
     handleVideoEdit: handleVideoEditModel,
@@ -8,6 +12,8 @@ const {
     handleDeleteVideo: handleDeleteVideoModel,
 } = require("../models/video/video.model");
 const { v4: uuidv4 } = require('uuid');
+const {setupLavinMQ} = require("../services/transcription");
+const {queueKeys} = require("../utils/queueKeys");
 
 
 exports.handleStartChunk = async function (req, res)  {
@@ -100,6 +106,10 @@ exports.handleAssembleVideo = async function (req, res)  {
 
     const relative_file_url = `/public/${sessionId}/${__filename}.${extension}`;
     const file_url = `${req.protocol}://${req.headers.host}${relative_file_url}`;
+
+    // Send to transcription queue
+    const channel = await setupLavinMQ();
+    channel.sendToQueue(queueKeys.TRANSCRIPTION_QUEUE, Buffer.from(JSON.stringify({ relative_file_url })));
 
     // Send final response
     res.status(200).json({
@@ -220,7 +230,8 @@ exports.handleDeleteVideo = async function (req, res) {
     });
 }
 
-exports.handleTranscribeVideoController = async function (req, res) {
+exports.handleTranscribeVideo = async function (req, res) {
+    const deepgram = new Deepgram(process.env.DEEPGRAM_API_KEY);
     const {id} = req.params;
     if(!id){
         res.status(400).json({
@@ -228,7 +239,23 @@ exports.handleTranscribeVideoController = async function (req, res) {
         });
     }
     const response = await handleFetchVideoModel({id});
-
+    const filePath = join('public', response.sessionId, `${response.name}.${response.extension}`);
+    return new Promise(async (resolve, reject) => {
+        try {
+            const response = await deepgram.transcription.preRecorded({
+                stream: fs.createReadStream(filePath),
+                mimetype: mime.getType(filePath),
+            })
+            console.log(response.results.channels[0].alternatives[0].transcript);
+            res.status(200).json({
+                message: 'Transcription successful',
+                data: response
+            });
+        } catch (e) {
+            console.error("Error during transcription", e);
+            reject(e);
+        }
+    })
 }
 
 exports.syncVideoFilesWithDatabase = async function (){
@@ -242,7 +269,7 @@ exports.syncVideoFilesWithDatabase = async function (){
 
     //Delete directories that are not in the database
     directories.forEach((directory) => {
-        const found = response.find((video) => video._id.toString() === directory);
+        const found = response.find((video) => video.sessionId === directory);
         if(!found){
             fs.rmdirSync(`public/${directory}`, { recursive: true });
         }

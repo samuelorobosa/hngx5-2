@@ -8,6 +8,10 @@ const videoSchema = new mongoose.Schema({
     extension: {
         type: String,
         required: true,
+    },
+    sessionId: {
+        type: String,
+        required: true,
     }
 },{
     versionKey: false
