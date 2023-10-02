@@ -41,9 +41,6 @@ exports.handleVideoUpload = async function (req, res)  {
     try {
         const chunkNumber = req.headers['chunk-number'];
         const sessionId = req.headers['session-id'];
-        const directoryPath = join('public', sessionId, 'chunks');
-        const filePath = join(directoryPath, `chunk${chunkNumber}`);
-
         if (!chunkNumber){
             res.status(400).json({
                 message: 'Chunk Number not found in request header'
@@ -55,6 +52,8 @@ exports.handleVideoUpload = async function (req, res)  {
                 message: 'Session ID not found in request header'
             })
         }
+        const directoryPath = join('public', sessionId, 'chunks');
+        const filePath = join(directoryPath, `chunk${chunkNumber}`);
 
         // Create the directory if it doesn't exist
         if (!fs.existsSync(directoryPath)) {
@@ -152,25 +151,26 @@ exports.handleStreamVideo = async function (req, res)  {
         }
 
         const response = await handleFetchVideoModel({id});
+
         if (!response) {
             res.status(400).json({
                 message: "Video not found",
             });
         }
-        const videoPath = join('public', response.sessionId, `${response.name}.${response.extension}`);
-        const stat = fs.statSync(videoPath);
+        const videoPath = join(__dirname, '..', '..', 'public', response.sessionId, `${response.name}.${response.extension}`);
+        res.sendFile(videoPath);
 
-        res.writeHead(200, {
-            'Content-Type': 'video/mp4',
-            'Content-Length': stat.size
-        });
-
-        const videoStream = fs.createReadStream(videoPath);
-        videoStream.pipe(res);
     } catch (e) {
-        res.status(500).json({
-            message: "Internal Server Error",
-        })
+        console.log(e)
+        if (e.name === 'CastError') {
+            res.status(500).json({
+                message: "Invalid data id provided",
+            })
+        } else {
+            res.status(500).json({
+                message: e.message
+            })
+        }
     }
 
 }

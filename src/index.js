@@ -27,4 +27,4 @@ async function startServer(){
   });
 }
 
-startServer().then(r => console.log(r));
+startServer().then(r => console.log(r, 'started')).catch(e => console.log(e, 'error'));
