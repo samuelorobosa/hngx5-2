@@ -36,6 +36,6 @@ async function startTranscriptionWorker() {
     });
 }
 
-startTranscriptionWorker().then(r => console.log(r));
+// startTranscriptionWorker().then(r => console.log(r));
 
 module.exports = setupLavinMQ;
